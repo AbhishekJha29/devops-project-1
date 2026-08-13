@@ -8,7 +8,7 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Hello from CI/CD Pipeline Demo App',
-    version: '1.0.0'
+    version: '1.0.1'
   });
 });
 
