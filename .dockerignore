@@ -1,0 +1,23 @@
+# Node dependencies
+node_modules/
+
+# Version control
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+
+# Test files & coverage
+tests/
+coverage/
+
+# Documentation & Docker files
+README.md
+Dockerfile
+.dockerignore
