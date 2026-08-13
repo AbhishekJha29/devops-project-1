@@ -97,4 +97,40 @@ Verify that the following plugins are active in **Manage Jenkins -> Plugins**:
 - **Pipeline** (installed by default with suggested plugins)
 - **Docker Pipeline** (install via *Available plugins* if not present)
 
+## GitHub Webhook Integration
+
+GitHub webhooks automatically notify and trigger a Jenkins pipeline build whenever code changes (e.g. `git push`) are pushed to the remote GitHub repository.
+
+### 1. Exposing Local Jenkins via ngrok
+Since Jenkins runs locally (`localhost:8080`), GitHub's servers cannot reach it directly. `ngrok` creates a secure public URL tunnel to your local Jenkins port:
+
+```bash
+ngrok http 8080
+```
+Copy the generated `https` forwarding URL (e.g., `https://a1b2c3d4.ngrok-free.app`).
+
+### 2. Configure Webhook in GitHub Repository
+1. Go to your repository on GitHub -> **Settings** -> **Webhooks** -> **Add webhook**.
+2. Set **Payload URL** to:
+   ```text
+   <YOUR_NGROK_URL>/github-webhook/
+   ```
+   *(Example: `https://a1b2c3d4.ngrok-free.app/github-webhook/` - **must include trailing slash!**)*
+3. Set **Content type** to `application/json`.
+4. Leave **Secret** empty for local setup.
+5. Under **Which events would you like to trigger this webhook?**, select **Just the push event**.
+6. Click **Add webhook**. Ensure a green checkmark appears after the initial ping test.
+
+### 3. Configure Jenkins Pipeline Job
+1. In Jenkins dashboard, click **New Item** -> enter name (e.g., `devops-cicd-pipeline`) -> select **Pipeline** -> click **OK**.
+2. Under **Build Triggers**, check **"GitHub hook trigger for GITScm polling"**.
+3. Under **Pipeline**:
+   - Set **Definition** to `Pipeline script from SCM`.
+   - Set **SCM** to `Git`.
+   - Set **Repository URL** to your GitHub repo URL (e.g. `https://github.com/AbhishekJha29/devops-project-1.git`).
+   - Set **Branch Specifier** to `*/main`.
+   - Ensure **Script Path** is set to `Jenkinsfile`.
+4. Click **Save**.
+
+
 

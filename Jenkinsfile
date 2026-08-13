@@ -5,6 +5,10 @@ pipeline {
         APP_NAME = 'devops-cicd-demo'
     }
 
+    triggers {
+        githubPush()
+    }
+
     stages {
         stage('Checkout') {
             steps {
