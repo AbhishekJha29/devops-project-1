@@ -68,3 +68,33 @@ docker stop cicd-demo-container
 docker rm cicd-demo-container
 ```
 
+## Jenkins CI/CD Setup
+
+Jenkins orchestrates the continuous integration and continuous deployment pipeline for this project (running automated tests, building Docker images, and deploying to environments).
+
+### 1. Launch Jenkins Container
+Start Jenkins in detached mode using Docker Compose:
+```bash
+docker compose -f jenkins/docker-compose.yml up -d
+```
+
+### 2. Retrieve Initial Admin Password
+Extract the auto-generated initial unlock password from the Jenkins container log:
+```bash
+docker exec jenkins-server cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+### 3. Unlock & Configure Jenkins UI
+1. Navigate to [http://localhost:8080](http://localhost:8080) in your web browser.
+2. Paste the initial admin password when prompted to unlock Jenkins.
+3. Select **"Install suggested plugins"** to install essential plugins (Git, Pipeline, etc.).
+4. Create your initial admin user account.
+5. Confirm Jenkins URL as `http://localhost:8080/` and complete setup.
+
+### 4. Ensure Required Plugins are Installed
+Verify that the following plugins are active in **Manage Jenkins -> Plugins**:
+- **Git plugin** (installed by default with suggested plugins)
+- **Pipeline** (installed by default with suggested plugins)
+- **Docker Pipeline** (install via *Available plugins* if not present)
+
+
