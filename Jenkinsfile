@@ -19,6 +19,9 @@ pipeline {
         }
 
         stage('Install Dependencies') {
+            agent {
+                docker { image 'node:20-alpine' }
+            }
             steps {
                 echo 'Installing application dependencies...'
                 sh 'npm install'
