@@ -2,6 +2,7 @@ FROM jenkins/jenkins:lts
 
 USER root
 
+# Install Docker CLI and kubectl
 RUN apt-get update && \
     apt-get install -y ca-certificates curl gnupg && \
     install -m 0755 -d /etc/apt/keyrings && \
@@ -10,6 +11,8 @@ RUN apt-get update && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
     apt-get update && \
     apt-get install -y docker-ce-cli && \
+    curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/$(dpkg --print-architecture)/kubectl" -o /usr/local/bin/kubectl && \
+    chmod +x /usr/local/bin/kubectl && \
     rm -rf /var/lib/apt/lists/*
 
 USER jenkins

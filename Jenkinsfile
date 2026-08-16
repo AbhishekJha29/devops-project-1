@@ -29,8 +29,8 @@ pipeline {
 
         stage('Run Tests') {
             agent {
-                    docker { image 'node:20-alpine' }
-                }
+                docker { image 'node:20-alpine' }
+            }
             steps {
                 echo 'Running automated tests with Jest...'
                 sh 'npm test'
@@ -55,14 +55,24 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo "Deploying build #${BUILD_NUMBER} (${DOCKER_IMAGE}:${BUILD_NUMBER}) to Kubernetes..."
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
+                sh "kubectl set image deployment/cicd-demo-app cicd-demo-app=${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                sh 'kubectl rollout status deployment/cicd-demo-app'
+            }
+        }
     }
 
     post {
         success {
-            echo "CI Pipeline Succeeded! Docker image ${DOCKER_IMAGE}:${BUILD_NUMBER} and ${DOCKER_IMAGE}:latest pushed successfully."
+            echo "CI/CD Pipeline Succeeded! Docker image ${DOCKER_IMAGE}:${BUILD_NUMBER} built, pushed, and deployed to Kubernetes successfully."
         }
         failure {
-            echo "CI Pipeline Failed for build #${BUILD_NUMBER}! Review console logs above for failure details."
+            echo "CI/CD Pipeline Failed for build #${BUILD_NUMBER}! Review console logs above for failure details."
         }
         always {
             echo 'Cleaning up dangling Docker images on agent...'

@@ -224,3 +224,50 @@ The application includes declarative Kubernetes manifests in the `/k8s` director
    curl <MINIKUBE_SERVICE_URL>/health
    ```
 
+## CD: Automated Deployment
+
+In Phase 7, Continuous Deployment (CD) is fully integrated into the Jenkins pipeline. Every Git push automatically builds, tests, packages, pushes to Docker Hub, and rolls out the new image version to the Kubernetes cluster without manual intervention.
+
+### How Kubeconfig & Cluster Access Works
+
+1. **`kubectl` inside Jenkins Controller (`jenkins/Dockerfile`)**:
+   - The Jenkins Docker image is built with the official `kubectl` CLI binary installed in `/usr/local/bin/kubectl`.
+
+2. **Flattened Kubeconfig Mount (`jenkins/docker-compose.yml`)**:
+   - **Why raw `~/.kube` directory mounts fail on Windows**: Minikube generates a Windows-specific `config` file containing absolute Windows file paths (e.g., `C:\Users\ADMIN\.minikube\profiles\minikube\client.crt`). When mounted into a Linux container, `kubectl` fails because Linux cannot resolve `C:\...` paths.
+   - **The Solution (Flattened Kubeconfig)**: We generate a self-contained, portable kubeconfig using `kubectl config view --minify --flatten`. This embeds certificate authorities, client certificates, and client keys directly as inline base64 data (`certificate-authority-data`, `client-certificate-data`, `client-key-data`), eliminating external file path dependencies.
+   - The generated `jenkins/jenkins-kubeconfig.yaml` file is mounted read-only into `/root/.kube/config` and `/var/jenkins_home/.kube/config`.
+
+```bash
+# Generate the flattened kubeconfig on the Windows host before starting Jenkins
+kubectl config view --minify --flatten > jenkins/jenkins-kubeconfig.yaml
+```
+
+3. **Skipping TLS Verification for `host.docker.internal`**:
+   - When reaching the Minikube API server from inside the Jenkins container, the endpoint URL is configured as `https://host.docker.internal:<port>`.
+   - Minikube's server TLS certificate was generated only for `localhost`, `127.0.0.1`, and internal cluster names—not `host.docker.internal`—which triggers an `x509: certificate is valid for ..., not host.docker.internal` validation error.
+   - Configuring `insecure-skip-tls-verify: true` (and removing `certificate-authority-data`) in `jenkins/jenkins-kubeconfig.yaml` bypasses this hostname mismatch. While convenient and standard for local sandbox/learning environments, proper CA trust chains and Subject Alternative Names (SANs) must be used in production setups.
+
+
+
+### Automated Pipeline Stage: `Deploy to Kubernetes`
+
+The Jenkinsfile includes a dedicated deployment stage executing directly on the controller:
+
+```groovy
+stage('Deploy to Kubernetes') {
+    steps {
+        echo "Deploying build #${BUILD_NUMBER} (${DOCKER_IMAGE}:${BUILD_NUMBER}) to Kubernetes..."
+        sh 'kubectl apply -f k8s/deployment.yaml'
+        sh 'kubectl apply -f k8s/service.yaml'
+        sh "kubectl set image deployment/cicd-demo-app cicd-demo-app=${DOCKER_IMAGE}:${BUILD_NUMBER}"
+        sh 'kubectl rollout status deployment/cicd-demo-app'
+    }
+}
+```
+
+- **`kubectl apply -f k8s/...`**: Ensures the Deployment and NodePort Service resources are applied/synchronized.
+- **`kubectl set image ...`**: Dynamically updates the container image to the unique build tag (`abhishek2906/cicd-demo-app:${BUILD_NUMBER}`) created in the current pipeline run.
+- **`kubectl rollout status ...`**: Monitors the rolling update in real-time, confirming that all pods transition to `Running` status and pass readiness probes before marking the build as successful. If the rollout fails (e.g. crash loop or failed probes), the pipeline fails immediately.
+
+
