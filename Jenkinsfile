@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'devops-cicd-demo'
+        // REPLACE 'yourusername' WITH YOUR ACTUAL DOCKER HUB USERNAME BEFORE RUNNING
+        DOCKER_IMAGE = 'abhishek2906/cicd-demo-app'
     }
 
     triggers {
@@ -12,51 +13,55 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out source code from repository...'
-                // Code is automatically checked out by Jenkins pipeline SCM plugin
+                echo 'Checking out source code from GitHub repository...'
+                checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Install Dependencies') {
             steps {
-                echo 'Executing initial application build step...'
-                // Placeholder step for initial pipeline execution
+                echo 'Installing application dependencies...'
+                sh 'npm install'
             }
         }
 
-        /* 
-         * FUTURE PIPELINE STAGES (To be implemented in Phase 5):
-         *
-         * stage('Test') {
-         *     steps {
-         *         echo 'Running unit test suite...'
-         *         // sh 'npm test'
-         *     }
-         * }
-         *
-         * stage('Build Docker Image') {
-         *     steps {
-         *         echo 'Building Docker container image...'
-         *         // sh 'docker build -t ${APP_NAME}:${BUILD_NUMBER} .'
-         *     }
-         * }
-         *
-         * stage('Push Docker Image') {
-         *     steps {
-         *         echo 'Pushing Docker image to registry...'
-         *         // withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-         *         //     sh 'docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}'
-         *         //     sh 'docker push ${DOCKER_USER}/${APP_NAME}:${BUILD_NUMBER}'
-         *         // }
-         *     }
-         * }
-         *
-         * stage('Deploy') {
-         *     steps {
-         *         echo 'Deploying application to Kubernetes cluster...'
-         *         // sh 'kubectl apply -f k8s/'
-         *     }
-         * }
-         */
+        stage('Run Tests') {
+            steps {
+                echo 'Running automated tests with Jest...'
+                sh 'npm test'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo "Building Docker image: ${DOCKER_IMAGE}:${BUILD_NUMBER} and ${DOCKER_IMAGE}:latest..."
+                sh "docker build -t ${DOCKER_IMAGE}:${BUILD_NUMBER} -t ${DOCKER_IMAGE}:latest ."
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                echo 'Logging in to Docker Hub and pushing image tags...'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    sh "docker push ${DOCKER_IMAGE}:${BUILD_NUMBER}"
+                    sh "docker push ${DOCKER_IMAGE}:latest"
+                    sh 'docker logout'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "CI Pipeline Succeeded! Docker image ${DOCKER_IMAGE}:${BUILD_NUMBER} and ${DOCKER_IMAGE}:latest pushed successfully."
+        }
+        failure {
+            echo "CI Pipeline Failed for build #${BUILD_NUMBER}! Review console logs above for failure details."
+        }
+        always {
+            echo 'Cleaning up dangling Docker images on agent...'
+            sh 'docker image prune -f'
+        }
     }
 }

@@ -132,5 +132,39 @@ Copy the generated `https` forwarding URL (e.g., `https://a1b2c3d4.ngrok-free.ap
    - Ensure **Script Path** is set to `Jenkinsfile`.
 4. Click **Save**.
 
+## CI Pipeline
 
+The project uses a declarative Jenkins pipeline (`Jenkinsfile`) to automate continuous integration. Every push to the repository triggers the pipeline automatically via GitHub webhook integration.
 
+### Pipeline Stages
+
+1. **Checkout**
+   - Automatically checks out the latest commit of the repository into the Jenkins workspace.
+2. **Install Dependencies**
+   - Executes `npm install` inside the workspace to install all dependencies defined in `package.json` (Express, Jest, Supertest).
+3. **Run Tests**
+   - Executes `npm test` using Jest.
+   - If any test fails, Jest exits with a non-zero exit code, causing the Jenkins pipeline to **immediately fail** and stop execution before building or pushing Docker images.
+4. **Build Docker Image**
+   - Builds the Docker image from `Dockerfile`.
+   - Multi-tags the image with both the Jenkins build number (`<DOCKER_IMAGE>:<BUILD_NUMBER>`) for immutable version tracking and `<DOCKER_IMAGE>:latest`.
+5. **Push to Docker Hub**
+   - Securely logs into Docker Hub using stored Jenkins credentials (ID: `dockerhub-creds`) via `withCredentials`.
+   - Pushes both tags (`:<BUILD_NUMBER>` and `:latest`) to Docker Hub.
+   - Logs out of Docker Hub immediately after pushing to maintain security.
+
+### Post-Build Actions
+
+- **`success`**: Prints a success message confirming the build number and successful push to Docker Hub.
+- **`failure`**: Prints a failure message directing you to inspect the build console logs.
+- **`always`**: Executes `docker image prune -f` on the Jenkins host/agent to clean up dangling and intermediate container layers, preventing disk space depletion over time.
+
+### Viewing Build Results and Logs in Jenkins
+
+1. Open Jenkins at [http://localhost:8080](http://localhost:8080).
+2. Click into your pipeline job (e.g., `devops-cicd-pipeline`).
+3. **Stage View**: The pipeline overview displays the status and execution time of each stage (green for passed, red for failed).
+4. **Console Output**:
+   - Click on the desired build number in the **Build History** panel on the left (e.g., `#1`, `#2`).
+   - Click **Console Output** from the left navigation menu to view complete real-time execution logs for every stage, including test results and Docker push output.
+5. **Pipeline Steps**: Click **Pipeline Steps** to view granular execution logs for each individual command step within a stage.
