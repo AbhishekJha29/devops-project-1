@@ -1,8 +1,7 @@
 version: '3.8'
-
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    build: .
     container_name: jenkins-server
     restart: unless-stopped
     user: root
@@ -12,7 +11,6 @@ services:
     volumes:
       - jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-
 volumes:
   jenkins_data:
     driver: local
