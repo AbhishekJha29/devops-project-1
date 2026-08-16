@@ -168,3 +168,59 @@ The project uses a declarative Jenkins pipeline (`Jenkinsfile`) to automate cont
    - Click on the desired build number in the **Build History** panel on the left (e.g., `#1`, `#2`).
    - Click **Console Output** from the left navigation menu to view complete real-time execution logs for every stage, including test results and Docker push output.
 5. **Pipeline Steps**: Click **Pipeline Steps** to view granular execution logs for each individual command step within a stage.
+
+## Kubernetes Deployment
+
+The application includes declarative Kubernetes manifests in the `/k8s` directory for container orchestration and deployment.
+
+### Manifest Overview
+
+1. **`k8s/deployment.yaml` (Deployment)**:
+   - **Replicas**: Runs `2` identical pod replicas for high availability.
+   - **Container Image**: `abhishek2906/cicd-demo-app:latest` listening on port `3000`.
+   - **Resource Management**:
+     - Requests: `100m` CPU, `128Mi` Memory (guaranteed minimum).
+     - Limits: `250m` CPU, `256Mi` Memory (maximum threshold).
+   - **Health Probes**:
+     - `readinessProbe`: Queries `GET /health` on port `3000` before routing traffic to the pod.
+     - `livenessProbe`: Queries `GET /health` on port `3000` to detect deadlocks and automatically restart failing containers.
+   - **Labels**: Pod template tagged with `app: cicd-demo-app` for service routing.
+
+2. **`k8s/service.yaml` (Service)**:
+   - **Type**: `NodePort` (for straightforward local access in Minikube without complex ingress configuration).
+   - **Selector**: Targets pods labeled with `app: cicd-demo-app`.
+   - **Port Mapping**: Exposes port `80` externally and routes traffic to target port `3000` on the container.
+
+### Deploying Manually with kubectl
+
+1. **Start Minikube cluster**:
+   ```bash
+   minikube start
+   ```
+
+2. **Apply Kubernetes manifests**:
+   ```bash
+   kubectl apply -f k8s/
+   ```
+
+3. **Verify Deployment and Pods**:
+   ```bash
+   kubectl get deployments
+   kubectl get pods -l app=cicd-demo-app
+   ```
+
+4. **Verify Service**:
+   ```bash
+   kubectl get svc cicd-demo-app-service
+   ```
+
+5. **Access the Application**:
+   ```bash
+   minikube service cicd-demo-app-service --url
+   ```
+   *Test the returned URL with curl or in a browser:*
+   ```bash
+   curl <MINIKUBE_SERVICE_URL>/
+   curl <MINIKUBE_SERVICE_URL>/health
+   ```
+

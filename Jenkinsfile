@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // REPLACE 'yourusername' WITH YOUR ACTUAL DOCKER HUB USERNAME BEFORE RUNNING
         DOCKER_IMAGE = 'abhishek2906/cicd-demo-app'
     }
 
