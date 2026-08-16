@@ -29,6 +29,9 @@ pipeline {
         }
 
         stage('Run Tests') {
+            agent {
+                    docker { image 'node:20-alpine' }
+                }
             steps {
                 echo 'Running automated tests with Jest...'
                 sh 'npm test'
